@@ -3,6 +3,7 @@ package me.ppting.plugin.tasks
 import com.android.build.gradle.api.ApplicationVariant
 import com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask
 import me.ppting.plugin.config.REPEAT_CONFIG_NAME
+import me.ppting.plugin.config.REPEAT_MAPPING_TEXT_FILE_NAME
 import me.ppting.plugin.config.RepeatConfig
 import me.ppting.plugin.utils.FileUtils
 import me.ppting.plugin.utils.ZipUtils
@@ -11,9 +12,7 @@ import me.ppting.plugin.utils.zip
 import org.gradle.api.Project
 import pink.madis.apk.arsc.ResourceFile
 import pink.madis.apk.arsc.ResourceTableChunk
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
+import java.io.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
@@ -52,7 +51,7 @@ class RemoveRepeatTask : ITask{
                 .files
                 .filter { it.name.endsWith(".ap_") }
                 .firstOrNull()?.let {
-                    dealWithSuffixApFile(it,repeatConfig)
+                    dealWithSuffixApFile(it,repeatConfig,project)
                 }
         }
     }
@@ -61,9 +60,9 @@ class RemoveRepeatTask : ITask{
     /**
      * 对 resources-${Variant}.ap_ 文件进行处理
      * @param apFile 未解压的 resources-${Variant}.ap_ 文件
-     * @param repeatConfigGet 配置文件
+     * @param repeatConfig 配置文件
      */
-    private fun dealWithSuffixApFile(apFile: File, repeatConfigGet: RepeatConfig) {
+    private fun dealWithSuffixApFile(apFile: File, repeatConfig: RepeatConfig, project: Project) {
         //用来存储文件，key 是 目录名 + # + crc
         //value 是 key 相同的文件列表
         val repeatResCaches = hashMapOf<String, MutableList<ZipEntry>>()
@@ -85,8 +84,8 @@ class RemoveRepeatTask : ITask{
         //                        /resources-debug.ap_
         //                        /output-metadata.json
         val unZipDirName = apFile.name.replace(".ap_", "")
-
-        val unZipDirPath = "${File(apFile.parent).parent}${File.separator}${unZipDirName}"
+        val apFileParent = File(apFile.parent)
+        val unZipDirPath = "${apFileParent.parent}${File.separator}${unZipDirName}"
         ZipUtils.unZipIt(apFile.absolutePath, unZipDirPath)
         //2. 获取到解压出来的 resources.arsc 文件
         val unZippedResourcesDotArscFile = File(unZipDirPath, ARSC_FILE)
@@ -95,15 +94,23 @@ class RemoveRepeatTask : ITask{
         val newResourceArscFileStream = FileInputStream(unZippedResourcesDotArscFile).use { fileInputStream ->
             val resourcesArscFileStream = ResourceFile.fromInputStream(fileInputStream)
 
+            val fileWriter = if (repeatConfig.enableReportMapping){
+                if (repeatConfig.mappingFilePath.isNullOrEmpty()){
+                    FileWriter("${project.buildDir}${File.separator}${REPEAT_MAPPING_TEXT_FILE_NAME}")
+                } else {
+                    FileWriter("${repeatConfig.mappingFilePath}${File.separator}${REPEAT_MAPPING_TEXT_FILE_NAME}",true)
+                }
+            } else {
+                null
+            }
             repeatResCaches
                 .filter { it.value.size > 1 }
                 .forEach { key, repeatResZipEntries ->
                     //获取到第一个，后序其他的都要重定向到这个资源文件上来
-                    //Todo 1. 过滤白名单
-                    //Todo 2. 记录日志
+                    //1. 过滤白名单
                     val repeatRes = repeatResZipEntries.filter {
                         val fileName = it.name.split("/").last()
-                        !repeatConfigGet.ignoreList.contains(fileName)
+                        !repeatConfig.ignoreList.contains(fileName)
                     }
                     if (repeatRes.size <= 1){
                         //如果过滤掉白名单后只剩下一个，则退出，进入下一个循环
@@ -111,12 +118,15 @@ class RemoveRepeatTask : ITask{
                     }
                     val firstZipEntry = repeatRes[0]
                     val otherResZipEntries = repeatRes.subList(1, repeatRes.size)
+                    fileWriter?.write("${firstZipEntry.name} -> ${firstZipEntry.name}\n")
                     otherResZipEntries.forEach { zipEntry ->
                         log("删除重复文件 : ${unZipDirPath}${File.separator}${zipEntry.name}")
                         log("删除重复文件 : name is ${zipEntry.name}")
-                        //1. 删除重复的文件
+                        //2. 记录日志
+                        fileWriter?.write("${zipEntry.name} -> ${firstZipEntry.name}\n")
+                        //3. 删除重复的文件
                         File("${unZipDirPath}${File.separator}${zipEntry.name}").delete()
-                        //2. 修改重定向
+                        //4. 修改重定向
 
                         resourcesArscFileStream
                             .chunks
@@ -131,7 +141,7 @@ class RemoveRepeatTask : ITask{
                     }
 
                 }
-
+            fileWriter?.close()
             return@use resourcesArscFileStream
         }
 

@@ -2,7 +2,9 @@ package me.ppting.plugin
 
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.api.ApplicationVariant
+import me.ppting.plugin.config.CONFIG_NAME
 import me.ppting.plugin.config.Config
+import me.ppting.plugin.config.REPEAT_CONFIG_NAME
 import me.ppting.plugin.config.RepeatConfig
 import me.ppting.plugin.tasks.RemoveRepeatTask
 import org.gradle.api.Plugin
@@ -15,8 +17,6 @@ import org.gradle.api.Project
 class ApkMonitorPlugin : Plugin<Project> {
     companion object {
         private const val TAG = "ApkMonitorPlugin"
-        private const val CONFIG_NAME = "apkMonitorConfig"
-        private const val REPEAT_CONFIG_NAME = "repeatConfig"
     }
 
     override fun apply(project: Project) {

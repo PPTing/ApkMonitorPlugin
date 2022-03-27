@@ -10,13 +10,15 @@ import javax.inject.Inject
 
 const val CONFIG_NAME = "apkMonitorConfig"
 const val REPEAT_CONFIG_NAME = "repeatConfig"
+const val REPEAT_MAPPING_TEXT_FILE_NAME = "repeatMapping.txt"
 
 open class Config : BaseConfig() {
 
 }
 
 open class RepeatConfig : BaseConfig() {
-
+    var enableReportMapping : Boolean = true
+    var mappingFilePath : String = ""
 }
 
 open class BaseConfig {

@@ -6,7 +6,8 @@
 
 |版本号|功能|
 |--|--|
-|0.1.beta|资源文件去重|
+|0.1.beta-SNAPSHOT|资源文件去重|
+|0.2.beta-SNAPSHOT|添加资源文件去重日志记录|
 
 
 ## 功能
@@ -41,6 +42,9 @@
             enable true//是否打开去重任务
             debugEnable = true//debug 模式下是否打开去重任务
             ignoreList = ["ic_launcher_3.png"]//白名单列表，在这个列表中的资源文件将不会被删除
+            enableReportMapping = true//是否记录去重日志，默认为 true
+            mappingFilePath = ""//去重日志文件路径，默认为项目的 build 目录下，app/build，输出的日志文件为 repeatMapping.txt
+
         }
     }
     ```

@@ -12,9 +12,7 @@ import java.util.zip.ZipOutputStream
  */
 
 fun ZipOutputStream.zip(srcRootDir: String, file: File) {
-    if (file == null) {
-        return
-    }
+
     //如果是文件，则直接压缩该文件
     if (file.isFile) {
         //获取文件相对于压缩文件夹根目录的子路径
