@@ -1,0 +1,52 @@
+# Apk 监控插件
+
+> ApkMonitorPlugin 是一个用来对 Android Apk 包进行监控的 Gradle 插件，对开发者无感知，在编译期做处理，`兼容 AndResGurad
+
+## 版本说明
+
+|版本号|功能|
+|--|--|
+|0.1.beta|资源文件去重|
+
+
+## 功能
+
+* 对 apk 中的重复资源文件进行去重
+
+    **支持 Android R+ (targetSdkVersion >= 30)**
+
+
+## 如何使用插件
+
+> 由于暂未发布到 mavenCentral() 仓库，暂时只能使用 mavenLocal() 或者自行打包到自己的 maven 仓库
+
+1. 编译插件到 mavenLocal() 中
+    在终端执行以下命令，或者通过 Android Studio 的 Gradle 面板进行操作
+
+    ```./gradlew :plugin:publishToMavenLocal```
+
+2. 在项目中添加 classpath 依赖
+    打开项目目录下的 `build.gradle` 文件，在 `repositories` 中添加 `mavenLocal()` 仓库，并添加 `classpath 'me.ppting.plugin:apkMonitor:0.1.beta` 依赖
+
+3. 在 app module 中引入插件，并添加配置参数
+
+    ***PS.参数默认都为 true，即打开状态***
+
+    ```
+    apply plugin: 'ApkMonitorPlugin'
+    apkMonitorConfig {
+        enable = true//是否打开插件
+        debugEnable true//debug 模式下是否打开插件
+        repeatConfig {//资源去重任务的配置
+            enable true//是否打开去重任务
+            debugEnable = true//debug 模式下是否打开去重任务
+            ignoreList = ["ic_launcher_3.png"]//白名单列表，在这个列表中的资源文件将不会被删除
+        }
+    }
+    ```
+
+
+## Todo:
+* 去重文件的日志记录
+* 大图检测
+* 资源文件压缩
