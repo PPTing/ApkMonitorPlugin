@@ -1,7 +1,9 @@
 package me.ppting.plugin.tasks
 
-import com.android.build.gradle.AppExtension
+import com.android.build.gradle.api.ApplicationVariant
 import com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask
+import me.ppting.plugin.config.REPEAT_CONFIG_NAME
+import me.ppting.plugin.config.RepeatConfig
 import me.ppting.plugin.utils.FileUtils
 import me.ppting.plugin.utils.ZipUtils
 import me.ppting.plugin.utils.setString
@@ -21,57 +23,47 @@ import java.util.zip.ZipOutputStream
  * Description: 去除重复的资源文件
  */
 
-class RemoveRepeatTask {
+class RemoveRepeatTask : ITask{
 
     companion object {
         private const val TAG = "RemoveRepeatTask"
+        private const val ARSC_FILE = "resources.arsc"
     }
 
-    fun call(project: Project) {
+    override fun call(project: Project, applicationVariant: ApplicationVariant) {
+        val repeatConfig = project.extensions.getByName(REPEAT_CONFIG_NAME) as RepeatConfig
+
+        log("single applicationVariant is ${applicationVariant.name.capitalize()}")
+        val variantName = applicationVariant.name.capitalize()
+        if (variantName.toLowerCase().contains("debug") && !repeatConfig.debugEnable){
+            //检查配置不允许 debug 使用，则跳过
+            return
+        }
+        val processResource = project.tasks.getByName("process${variantName}Resources")
+        log("processResource is ${processResource.name}")
+        processResource.doLast {
+            log("processResource doLast")
+            val resourcesTask = it as LinkApplicationAndroidResourcesTask
+            val resPackageOutputFolder = resourcesTask.resPackageOutputFolder
+            log("resPackageOutputFolder is ${resPackageOutputFolder.asFileTree.files}")
 
 
-        project.afterEvaluate {
-            val hasPlugin = project.plugins.hasPlugin("com.android.application")
-            log("${TAG} hasPlugin $hasPlugin")
-            if (hasPlugin) {
-                val android = project.extensions.findByName("android")
-                if (android is AppExtension) {
-                    log("android is AppExtension")
-//
-                    log("applicationVariants is ${android.applicationVariants}")
-                    android.applicationVariants.forEach {
-                        log("single applicationVariant is ${it.name.capitalize()}")
-                        val variantName = it.name.capitalize()
-                        val processResource =
-                            project.tasks.getByName("process${variantName}Resources")
-                        log("processResource is ${processResource.name}")
-                        processResource.doLast {
-                            log("processResource doLast")
-                            val resourcesTask = it as LinkApplicationAndroidResourcesTask
-                            val resPackageOutputFolder = resourcesTask.resPackageOutputFolder
-                            log("resPackageOutputFolder is ${resPackageOutputFolder.asFileTree.files}")
-
-
-                            resPackageOutputFolder.asFileTree
-                                .files
-                                .filter { it.name.endsWith(".ap_") }
-                                .firstOrNull()?.let {
-                                    dealWithSuffixApFile(it)
-                                }
-                        }
-                    }
-
-
+            resPackageOutputFolder.asFileTree
+                .files
+                .filter { it.name.endsWith(".ap_") }
+                .firstOrNull()?.let {
+                    dealWithSuffixApFile(it,repeatConfig)
                 }
-            }
         }
     }
 
 
     /**
      * 对 resources-${Variant}.ap_ 文件进行处理
+     * @param apFile 未解压的 resources-${Variant}.ap_ 文件
+     * @param repeatConfigGet 配置文件
      */
-    private fun dealWithSuffixApFile(apFile: File) {
+    private fun dealWithSuffixApFile(apFile: File, repeatConfigGet: RepeatConfig) {
         //用来存储文件，key 是 目录名 + # + crc
         //value 是 key 相同的文件列表
         val repeatResCaches = hashMapOf<String, MutableList<ZipEntry>>()
@@ -92,12 +84,12 @@ class RemoveRepeatTask {
         // processed_res/debug/out/resources-debug/res/...
         //                        /resources-debug.ap_
         //                        /output-metadata.json
-        val unZipDirName = "Temp"//apFile.name.replace(".ap_", "")
+        val unZipDirName = apFile.name.replace(".ap_", "")
 
         val unZipDirPath = "${File(apFile.parent).parent}${File.separator}${unZipDirName}"
         ZipUtils.unZipIt(apFile.absolutePath, unZipDirPath)
         //2. 获取到解压出来的 resources.arsc 文件
-        val unZippedResourcesDotArscFile = File(unZipDirPath, "resources.arsc")
+        val unZippedResourcesDotArscFile = File(unZipDirPath, ARSC_FILE)
 
         //3. 将 resources.arsc 文件中的 chunks 拿到，并筛选出资源文件部分的 chunks
         val newResourceArscFileStream = FileInputStream(unZippedResourcesDotArscFile).use { fileInputStream ->
@@ -107,11 +99,21 @@ class RemoveRepeatTask {
                 .filter { it.value.size > 1 }
                 .forEach { key, repeatResZipEntries ->
                     //获取到第一个，后序其他的都要重定向到这个资源文件上来
-                    val firstZipEntry = repeatResZipEntries[0]
-                    val otherResZipEntries =
-                        repeatResZipEntries.subList(1, repeatResZipEntries.size)
+                    //Todo 1. 过滤白名单
+                    //Todo 2. 记录日志
+                    val repeatRes = repeatResZipEntries.filter {
+                        val fileName = it.name.split("/").last()
+                        !repeatConfigGet.ignoreList.contains(fileName)
+                    }
+                    if (repeatRes.size <= 1){
+                        //如果过滤掉白名单后只剩下一个，则退出，进入下一个循环
+                        return@forEach
+                    }
+                    val firstZipEntry = repeatRes[0]
+                    val otherResZipEntries = repeatRes.subList(1, repeatRes.size)
                     otherResZipEntries.forEach { zipEntry ->
                         log("删除重复文件 : ${unZipDirPath}${File.separator}${zipEntry.name}")
+                        log("删除重复文件 : name is ${zipEntry.name}")
                         //1. 删除重复的文件
                         File("${unZipDirPath}${File.separator}${zipEntry.name}").delete()
                         //2. 修改重定向
