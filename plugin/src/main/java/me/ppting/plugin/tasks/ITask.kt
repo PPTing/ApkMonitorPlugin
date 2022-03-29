@@ -9,5 +9,8 @@ import org.gradle.api.Project
  */
 
 interface ITask {
+
+    fun createConfig(project: Project)
+
     fun call(project: Project, applicationVariant: ApplicationVariant)
 }

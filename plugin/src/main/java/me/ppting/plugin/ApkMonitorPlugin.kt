@@ -6,6 +6,7 @@ import me.ppting.plugin.config.CONFIG_NAME
 import me.ppting.plugin.config.Config
 import me.ppting.plugin.config.REPEAT_CONFIG_NAME
 import me.ppting.plugin.config.RepeatConfig
+import me.ppting.plugin.tasks.ITask
 import me.ppting.plugin.tasks.RemoveRepeatTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -19,9 +20,13 @@ class ApkMonitorPlugin : Plugin<Project> {
         private const val TAG = "ApkMonitorPlugin"
     }
 
+    private val tasks by lazy {
+        listOf<ITask>(RemoveRepeatTask())
+    }
+
     override fun apply(project: Project) {
         project.extensions.create(CONFIG_NAME,Config::class.java)
-        project.extensions.create(REPEAT_CONFIG_NAME,RepeatConfig::class.java)
+        tasks.forEach { it.createConfig(project) }
 
 
         project.afterEvaluate {
@@ -51,7 +56,7 @@ class ApkMonitorPlugin : Plugin<Project> {
     }
 
     private fun execute(project: Project, applicationVariant: ApplicationVariant){
-        RemoveRepeatTask().call(project,applicationVariant)
+        tasks.forEach { it.call(project,applicationVariant) }
     }
 
 }

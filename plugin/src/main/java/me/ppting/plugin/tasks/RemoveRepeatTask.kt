@@ -29,6 +29,10 @@ class RemoveRepeatTask : ITask{
         private const val ARSC_FILE = "resources.arsc"
     }
 
+    override fun createConfig(project: Project) {
+        project.extensions.create(REPEAT_CONFIG_NAME,RepeatConfig::class.java)
+    }
+
     override fun call(project: Project, applicationVariant: ApplicationVariant) {
         val repeatConfig = project.extensions.getByName(REPEAT_CONFIG_NAME) as RepeatConfig
 
