@@ -13,6 +13,8 @@ import org.gradle.api.Project
 import pink.madis.apk.arsc.ResourceFile
 import pink.madis.apk.arsc.ResourceTableChunk
 import java.io.*
+import java.text.CharacterIterator
+import java.text.StringCharacterIterator
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
@@ -107,6 +109,8 @@ class RemoveRepeatTask : ITask{
             } else {
                 null
             }
+            var deleteRepeatNumbers = 0L//记录删除的重复文件数量
+            var deleteRepeatFileSize = 0L//记录删除的重复文件的大小
             repeatResCaches
                 .filter { it.value.size > 1 }
                 .forEach { key, repeatResZipEntries ->
@@ -123,6 +127,7 @@ class RemoveRepeatTask : ITask{
                     val firstZipEntry = repeatRes[0]
                     val otherResZipEntries = repeatRes.subList(1, repeatRes.size)
                     fileWriter?.write("${firstZipEntry.name} <--- ${firstZipEntry.name}\n ")
+                    deleteRepeatNumbers += otherResZipEntries.size
                     otherResZipEntries.forEach { zipEntry ->
                         log("删除重复文件 : ${unZipDirPath}${File.separator}${zipEntry.name}")
                         log("删除重复文件 : name is ${zipEntry.name}")
@@ -131,7 +136,7 @@ class RemoveRepeatTask : ITask{
                         //3. 删除重复的文件
                         File("${unZipDirPath}${File.separator}${zipEntry.name}").delete()
                         //4. 修改重定向
-
+                        deleteRepeatFileSize += zipEntry.size
                         resourcesArscFileStream
                             .chunks
                             .asSequence()
@@ -145,6 +150,8 @@ class RemoveRepeatTask : ITask{
                     }
                     fileWriter?.write("----------------------------------------------\n")
                 }
+            fileWriter?.write("删除的文件数量为:${deleteRepeatNumbers}\n")
+            fileWriter?.write("删除的文件大小为:${humanReadableByteCountBin(deleteRepeatFileSize)}\n")
             fileWriter?.close()
             return@use resourcesArscFileStream
         }
@@ -183,5 +190,22 @@ class RemoveRepeatTask : ITask{
 
     private fun log(message: String) {
         System.out.println("${TAG} $message")
+    }
+
+    fun humanReadableByteCountBin(bytes: Long): String? {
+        val absB = if (bytes == Long.MIN_VALUE) Long.MAX_VALUE else Math.abs(bytes)
+        if (absB < 1024) {
+            return "$bytes B"
+        }
+        var value = absB
+        val ci: CharacterIterator = StringCharacterIterator("KMGTPE")
+        var i = 40
+        while (i >= 0 && absB > 0xfffccccccccccccL shr i) {
+            value = value shr 10
+            ci.next()
+            i -= 10
+        }
+        value *= java.lang.Long.signum(bytes).toLong()
+        return String.format("%.1f %ciB", value / 1024.0, ci.current())
     }
 }
