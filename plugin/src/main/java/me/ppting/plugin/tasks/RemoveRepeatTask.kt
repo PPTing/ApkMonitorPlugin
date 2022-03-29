@@ -118,12 +118,12 @@ class RemoveRepeatTask : ITask{
                     }
                     val firstZipEntry = repeatRes[0]
                     val otherResZipEntries = repeatRes.subList(1, repeatRes.size)
-                    fileWriter?.write("${firstZipEntry.name} -> ${firstZipEntry.name}\n")
+                    fileWriter?.write("${firstZipEntry.name} <--- ${firstZipEntry.name}\n ")
                     otherResZipEntries.forEach { zipEntry ->
                         log("删除重复文件 : ${unZipDirPath}${File.separator}${zipEntry.name}")
                         log("删除重复文件 : name is ${zipEntry.name}")
                         //2. 记录日志
-                        fileWriter?.write("${zipEntry.name} -> ${firstZipEntry.name}\n")
+                        fileWriter?.write("${getSpaceByLength(firstZipEntry.name.length)}<--- ${zipEntry.name}\n")
                         //3. 删除重复的文件
                         File("${unZipDirPath}${File.separator}${zipEntry.name}").delete()
                         //4. 修改重定向
@@ -139,7 +139,7 @@ class RemoveRepeatTask : ITask{
                                 }
                             }
                     }
-
+                    fileWriter?.write("----------------------------------------------\n")
                 }
             fileWriter?.close()
             return@use resourcesArscFileStream
@@ -167,6 +167,14 @@ class RemoveRepeatTask : ITask{
             log("删除中间产物出错了！！！")
         }
 
+    }
+
+    private val spaceCacheMap by lazy { mutableMapOf<Int,String>() }
+
+    private fun getSpaceByLength(length: Int) : String{
+        return spaceCacheMap.getOrPut(length){
+            (" ").repeat(length)
+        }
     }
 
     private fun log(message: String) {
