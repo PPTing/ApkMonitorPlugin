@@ -26,8 +26,12 @@
 
     ```./gradlew :plugin:publishToMavenLocal```
 
+    ![apk_monitor_plugin_doc_publish_maven_local.png](https://s2.loli.net/2022/03/29/MgKbkiq38IBZSXT.png)
+
 2. 在项目中添加 classpath 依赖
     打开项目目录下的 `build.gradle` 文件，在 `repositories` 中添加 `mavenLocal()` 仓库，并添加 `classpath 'me.ppting.plugin:apkMonitor:0.1.beta` 依赖
+
+    ![apk_monitor_plugin_doc_add_repo.png](https://s2.loli.net/2022/03/29/VIN31u2v8aSblMF.png)
 
 3. 在 app module 中引入插件，并添加配置参数
 
