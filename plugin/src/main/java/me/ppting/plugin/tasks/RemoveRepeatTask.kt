@@ -156,7 +156,7 @@ class RemoveRepeatTask : ITask{
         log("将 $unZipDirPath 压缩为 ${apFile.absolutePath}")
         //ZipUtils.toZip(unZipDirPath, apFile.absolutePath,true)
         ZipOutputStream(apFile.outputStream()).use {
-            it.zip(unZipDirPath, File(unZipDirPath))
+            it.zip(unZipDirPath, File(unZipDirPath), setOf(ARSC_FILE))
         }
         log("新的 ${apFile.name}压缩完毕")
         //6. 删除中间产物

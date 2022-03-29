@@ -11,7 +11,7 @@ import java.util.zip.ZipOutputStream
  * Description:
  */
 
-fun ZipOutputStream.zip(srcRootDir: String, file: File) {
+fun ZipOutputStream.zip(srcRootDir: String, file: File,storedFileNames: Set<String>) {
 
     //如果是文件，则直接压缩该文件
     if (file.isFile) {
@@ -21,16 +21,17 @@ fun ZipOutputStream.zip(srcRootDir: String, file: File) {
         if (index != -1) {
             subPath = subPath.substring(srcRootDir.length + File.separator.length)
         }
-        val entry = ZipEntry(subPath).apply {
-            //method = ZipEntry.STORED
-            setLevel(ZipOutputStream.STORED)
-            setMethod(ZipEntry.STORED);
-            setCompressedSize(file.length());
-            setSize(file.length());
-            val crc = CRC32();
-            //file.by
-            crc.update(file.readBytes())//getFileBytes(srcFile));
-            setCrc(crc.getValue());
+        val entry = ZipEntry(subPath)
+        if (storedFileNames.contains(file.name)){
+            entry.let {
+                it.method = ZipEntry.STORED
+                it.compressedSize = file.length()
+                it.size = file.length()
+                it.crc = CRC32().apply {
+                    update(file.readBytes())
+                }.value
+            }
+
         }
         putNextEntry(entry)
 
@@ -43,7 +44,7 @@ fun ZipOutputStream.zip(srcRootDir: String, file: File) {
         val childFileList = file.listFiles()
         for (n in childFileList.indices) {
             childFileList[n].absolutePath.indexOf(file.absolutePath)
-            zip(srcRootDir, childFileList[n])
+            zip(srcRootDir, childFileList[n],storedFileNames)
         }
     }
     //如果是目录，则压缩整个目录
