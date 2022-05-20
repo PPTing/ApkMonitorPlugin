@@ -4,8 +4,6 @@ import com.android.build.gradle.AppExtension
 import com.android.build.gradle.api.ApplicationVariant
 import me.ppting.plugin.config.CONFIG_NAME
 import me.ppting.plugin.config.Config
-import me.ppting.plugin.config.REPEAT_CONFIG_NAME
-import me.ppting.plugin.config.RepeatConfig
 import me.ppting.plugin.tasks.ITask
 import me.ppting.plugin.tasks.RemoveRepeatTask
 import org.gradle.api.Plugin
@@ -21,11 +19,11 @@ class ApkMonitorPlugin : Plugin<Project> {
     }
 
     private val tasks by lazy {
-        listOf<ITask>(RemoveRepeatTask())
+        listOf<ITask>(RemoveRepeatTask())//, CoverToWebPTask())
     }
 
     override fun apply(project: Project) {
-        project.extensions.create(CONFIG_NAME,Config::class.java)
+        project.extensions.create(CONFIG_NAME, Config::class.java)
         tasks.forEach { it.createConfig(project) }
 
 
@@ -35,17 +33,18 @@ class ApkMonitorPlugin : Plugin<Project> {
             val android = project.extensions.findByName("android")
             val isAndroid = android is AppExtension
             //检查配置项
-            if (!configGet.enable || !isAndroid || !isApplicationModule){
+            if (!configGet.enable || !isAndroid || !isApplicationModule) {
                 return@afterEvaluate
             }
             //检查 debug 是否打开
 
             (android as AppExtension).applicationVariants.forEach {
                 val variantName = it.name.capitalize()
-                if (variantName.toLowerCase().contains("debug")){
+                System.out.println("$TAG: $variantName")
+                if (variantName.toLowerCase().contains("debug")) {
                     //debug 版本
-                    if (configGet.debugEnable){
-                        execute(project,it)
+                    if (configGet.debugEnable) {
+                        execute(project, it)
                     }
                 } else {
                     //非 debug 版本
@@ -55,8 +54,8 @@ class ApkMonitorPlugin : Plugin<Project> {
         }
     }
 
-    private fun execute(project: Project, applicationVariant: ApplicationVariant){
-        tasks.forEach { it.call(project,applicationVariant) }
+    private fun execute(project: Project, applicationVariant: ApplicationVariant) {
+        tasks.forEach { it.call(project, applicationVariant) }
     }
 
 }

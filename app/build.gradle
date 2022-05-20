@@ -2,14 +2,18 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'ApkMonitorPlugin'
-apkMonitorConfig {
-    enable = true
-    repeatConfig {
-        enable true
-        debugEnable = true
-        ignoreList = ["ic_launcher_3.png"]
-    }
-}
+//apkMonitorConfig {
+//    enable = true
+//    repeatConfig {
+//        enable true
+//        debugEnable = true
+//        ignoreList = ["ic_launcher_3.png"]
+//    }
+//    compressConfig {
+//        enable true
+//        debugEnable = true
+//    }
+//}
 android {
 
     compileSdkVersion 30
