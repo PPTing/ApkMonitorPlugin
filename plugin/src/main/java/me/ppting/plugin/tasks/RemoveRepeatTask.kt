@@ -277,21 +277,21 @@ class RemoveRepeatTask : ITask {
             executeCmd(cmd)
             if (webPFile.exists() && webPFile.length() < originFile.length()) {
                 System.out.println("转 webp ${webPFile.absolutePath}")
-                fileWriter?.write("${originFile.absolutePath} -> ${webPFile.absolutePath}\n")
+
+                //压缩前的文件名
+                val originFileName = "${originFile.parentFile.parentFile.name}${File.separator}${originFile.parentFile.name}${File.separator}${originFile.name}"
+
+                //压缩后的文件名
+                val compressFileName = webPFile.absolutePath.replace("${rawFileDir.absolutePath}${File.separator}", "")
+
+                fileWriter?.write("${originFileName} -> ${compressFileName}\n")
+                //region 修改 arsc 中的映射
                 resourcesArscFileStream
                     .chunks
                     .asSequence()
                     .filterIsInstance<ResourceTableChunk>()
                     .forEach { resourceTableChunk ->
-
                         //如果被压缩的图片包含去重的列表中，则还要修改其他的图片
-                        //压缩前的文件名
-                        val originFileName =
-                            "${originFile.parentFile.parentFile.name}${File.separator}${originFile.parentFile.name}${File.separator}${originFile.name}"
-                        System.out.println("被压缩的文件的 originFileName 为 $originFileName")
-                        //压缩后的文件名
-                        val compressFileName = webPFile.absolutePath.replace("${rawFileDir.absolutePath}${File.separator}", "")
-                        System.out.println("压缩后的文件名为 $compressFileName")
                         val index = resourceTableChunk.stringPool.indexOf(originFileName)
                         if (index != -1) {
                             resourceTableChunk.stringPool.setString(index, compressFileName)
@@ -306,8 +306,9 @@ class RemoveRepeatTask : ITask {
                         }
 
                     }
-                originFile.delete()
+                //endregion
                 reduceSize += (originFile.length() - webPFile.length())
+                originFile.delete()
             } else {
                 webPFile.delete()
                 System.out.println("删除文件 ${webPFile.absolutePath}")
