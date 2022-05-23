@@ -41,8 +41,13 @@ class RemoveRepeatTask : ITask {
 
         log("single applicationVariant is ${applicationVariant.name.capitalize()}")
         val variantName = applicationVariant.name.capitalize()
-        if (variantName.toLowerCase().contains("debug") && !repeatConfig.debugEnable) {
+        if (variantName.toLowerCase().contains("debug") && !repeatConfig.debugEnable && !compressConfig.debugEnable) {
             //检查配置不允许 debug 使用，则跳过
+            return
+        }
+
+        if (!repeatConfig.enable && !compressConfig.enable) {
+            //两个任务都没有打开，则跳过
             return
         }
         val processResource = project.tasks.getByName("process${variantName}Resources")
@@ -58,7 +63,7 @@ class RemoveRepeatTask : ITask {
                 .files
                 .filter { it.name.endsWith(".ap_") }
                 .firstOrNull()?.let { _apFile ->
-                    dealWithSuffixApFile(_apFile, repeatConfig, compressConfig, project)
+                    dealWithSuffixApFile(_apFile, variantName, repeatConfig, compressConfig, project)
                 }
         }
     }
@@ -66,10 +71,11 @@ class RemoveRepeatTask : ITask {
 
     /**
      * 对 resources-${Variant}.ap_ 文件进行处理
+     * @param variantName 当前的 variantName
      * @param apFile 未解压的 resources-${Variant}.ap_ 文件
      * @param repeatConfig 配置文件
      */
-    private fun dealWithSuffixApFile(apFile: File, repeatConfig: RepeatConfig, compressConfig: CompressConfig, project: Project) {
+    private fun dealWithSuffixApFile(apFile: File, variantName: String, repeatConfig: RepeatConfig, compressConfig: CompressConfig, project: Project) {
 
         //1. 将 *.ap_ 文件解压到当前目录下的同名目录中
         // processed_res/debug/out/resources-debug
@@ -91,10 +97,18 @@ class RemoveRepeatTask : ITask {
             val resourcesArscFileStream = ResourceFile.fromInputStream(fileInputStream)
 
 
-            //region 去重
-            val repeatResCaches = deleteRepeatRes(project, apFile, repeatConfig, unZipDirPath, resourcesArscFileStream)
+            //去重
+            val repeatResCaches = if ((repeatConfig.debugEnable && variantName.toLowerCase().contains("debug") || repeatConfig.enable)) {
+                //配置设置允许，或者当前是
+                deleteRepeatRes(project, apFile, repeatConfig, unZipDirPath, resourcesArscFileStream)
+            } else {
+                RepeatTaskResult(HashMap<String, Int>(0))
+            }
+
             //去重后，将文件压缩
-            compressPng(project, File(unZipDirPath), compressConfig, resourcesArscFileStream, repeatResCaches)
+            if ((compressConfig.debugEnable && variantName.toLowerCase().contains("debug") || compressConfig.enable)) {
+                compressPng(project, File(unZipDirPath), compressConfig, resourcesArscFileStream, repeatResCaches)
+            }
 
             return@use resourcesArscFileStream
         }
@@ -296,8 +310,8 @@ class RemoveRepeatTask : ITask {
                         if (index != -1) {
                             resourceTableChunk.stringPool.setString(index, compressFileName)
                         }
-                        val repeatFileSize = repeatTaskResult.repeatSize.get(originFileName)?:0
-                        for (i in 0 until repeatFileSize){
+                        val repeatFileSize = repeatTaskResult.repeatSize.get(originFileName) ?: 0
+                        for (i in 0 until repeatFileSize) {
                             //因为前面已经替换过一次了，这里减一，只需要替换那些重复的资源(不包括第一张)
                             val otherIndex = resourceTableChunk.stringPool.indexOf(originFileName)
                             if (otherIndex != -1) {
